@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>알루미늄 방범창 견적기</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f7fa;font-family:Arial,"Malgun Gothic",sans-serif;color:#13243a}
+.wrap{max-width:900px;margin:0 auto;padding:22px}
+.hero{background:#13243a;color:#fff;border-radius:18px;padding:24px 26px;margin-bottom:16px}
+.hero h1{margin:0;font-size:34px}
+.hero p{margin:8px 0 0;color:#dce7ef;font-size:16px}
+.card{background:#fff;border:1px solid #d7e0e7;border-radius:18px;padding:22px;box-shadow:0 6px 20px rgba(20,45,65,.06)}
+.input-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+label{display:block;font-size:17px;font-weight:900;margin-bottom:7px}
+input{width:100%;height:60px;border:2px solid #a9bfce;border-radius:12px;padding:0 16px;font-size:24px;font-weight:900;color:#102b3f}
+input:focus{outline:3px solid rgba(40,123,170,.12);border-color:#2f7fad}
+.unit{font-size:14px;color:#6e7f8b;margin-top:6px}
+button.calc{width:100%;height:66px;margin-top:18px;border:0;border-radius:13px;background:#ffc83d;color:#1d2935;font-size:25px;font-weight:950;cursor:pointer}
+.result{display:none;margin-top:18px}
+.result.show{display:block}
+.size-note{background:#edf4f8;border-radius:12px;padding:14px 16px;font-size:18px;font-weight:900;line-height:1.55}
+.big-result{margin-top:14px;border:3px solid #13243a;border-radius:16px;padding:22px;text-align:center}
+.big-result .label{font-size:18px;color:#607585;font-weight:800}
+.big-result .qty{font-size:52px;font-weight:950;color:#d71920;line-height:1.1;margin:4px 0}
+.big-result .price{font-size:28px;font-weight:950}
+.detail{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.detail .box{background:#f7f9fb;border:1px solid #dce4e9;border-radius:12px;padding:14px;text-align:center}
+.detail span{display:block;font-size:13px;color:#73828d;font-weight:800}
+.detail b{display:block;margin-top:5px;font-size:19px}
+.warn{margin-top:14px;background:#fff7df;border-radius:12px;padding:13px 15px;color:#6e5400;font-size:14px;font-weight:800;line-height:1.55}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.actions button{height:52px;border-radius:10px;border:1px solid #b8c9d4;background:#fff;font-size:17px;font-weight:900;cursor:pointer}
+.actions .copy{background:#eaf4fb;border-color:#79a9c8}
+@media(max-width:650px){
+  .wrap{padding:12px}
+  .hero h1{font-size:27px}
+  .input-grid,.detail,.actions{grid-template-columns:1fr}
+  input{font-size:22px}
+  .big-result .qty{font-size:45px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <h1>알루미늄 방범창 견적기</h1>
+    <p>가로·세로를 입력하면 카페24 주문수량과 금액을 바로 계산합니다.</p>
+  </div>
+
+  <div class="card">
+    <div class="input-grid">
+      <div>
+        <label for="width">가로 사이즈</label>
+        <input id="width" type="number" inputmode="numeric" min="1" max="2200" placeholder="예: 1550">
+        <div class="unit">단위: mm</div>
+      </div>
+      <div>
+        <label for="height">세로 사이즈</label>
+        <input id="height" type="number" inputmode="numeric" min="1" max="2200" placeholder="예: 1650">
+        <div class="unit">단위: mm</div>
+      </div>
+    </div>
+
+    <button class="calc" id="calcBtn">견적 계산</button>
+
+    <div class="result" id="result">
+      <div class="size-note" id="sizeNote"></div>
+
+      <div class="big-result">
+        <div class="label">카페24 주문수량</div>
+        <div class="qty"><span id="qty">0</span>개</div>
+        <div class="price">결제금액 <span id="cafePrice">0원</span></div>
+      </div>
+
+      <div class="detail">
+        <div class="box"><span>스마트스토어 기준가격</span><b id="smartPrice">0원</b></div>
+        <div class="box"><span>카페24 1개 단가</span><b>1,000원</b></div>
+        <div class="box"><span>올림 차액</span><b id="difference">0원</b></div>
+      </div>
+
+      <div class="warn">
+        카페24는 1,000원 단위 수량 주문 방식이라 스마트스토어 실제 가격보다 0~999원 높게 계산될 수 있습니다. 부족하게 받지 않도록 항상 올림 처리합니다.
+      </div>
+
+      <div class="actions">
+        <button class="copy" id="copyBtn">견적내용 복사</button>
+        <button id="resetBtn">다시 계산</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="price-data.js"></script>
+<script>
+const money=n=>Number(n||0).toLocaleString("ko-KR")+"원";
+const clampBand=mm=>{
+  const n=Number(mm);
+  if(!n || n<=0) return null;
+  if(n>2200) return "over";
+  if(n<=600) return 60;
+  return Math.ceil(n/100)*10;
+};
+const labelFor=cm=>{
+  if(cm===60) return "~600mm";
+  return `${(cm-10)*10+1}~${cm*10}mm`;
+};
+
+function calculate(){
+  const w=Number(document.getElementById("width").value);
+  const h=Number(document.getElementById("height").value);
+  const wb=clampBand(w), hb=clampBand(h);
+
+  if(!wb || !hb){
+    alert("가로와 세로 사이즈를 입력해 주세요.");
+    return;
+  }
+  if(wb==="over" || hb==="over"){
+    alert("현재 견적기는 최대 2200mm까지 계산합니다.");
+    return;
+  }
+
+  const smart=PRICE_DATA.baseSmart + PRICE_DATA.width[String(wb)] + PRICE_DATA.height[String(hb)];
+  const qty=Math.ceil(smart/PRICE_DATA.unitCafe);
+  const cafe=qty*PRICE_DATA.unitCafe;
+  const diff=cafe-smart;
+
+  document.getElementById("sizeNote").innerHTML =
+    `입력: <b>가로 ${w}mm × 세로 ${h}mm</b><br>`+
+    `적용구간: 가로 <b>${labelFor(wb)}</b> / 세로 <b>${labelFor(hb)}</b>`;
+
+  document.getElementById("qty").textContent=qty;
+  document.getElementById("cafePrice").textContent=money(cafe);
+  document.getElementById("smartPrice").textContent=money(smart);
+  document.getElementById("difference").textContent="+"+money(diff);
+  document.getElementById("result").classList.add("show");
+
+  window.currentQuote={w,h,wb,hb,smart,qty,cafe,diff};
+}
+
+document.getElementById("calcBtn").onclick=calculate;
+document.getElementById("width").addEventListener("keydown",e=>{if(e.key==="Enter") calculate()});
+document.getElementById("height").addEventListener("keydown",e=>{if(e.key==="Enter") calculate()});
+
+document.getElementById("resetBtn").onclick=()=>{
+  document.getElementById("width").value="";
+  document.getElementById("height").value="";
+  document.getElementById("result").classList.remove("show");
+  document.getElementById("width").focus();
+};
+
+document.getElementById("copyBtn").onclick=async()=>{
+  if(!window.currentQuote) return;
+  const q=window.currentQuote;
+  const text=
+`알루미늄 방범창
+가로 ${q.w}mm × 세로 ${q.h}mm
+카페24 주문수량: ${q.qty}개
+결제금액: ${money(q.cafe)}`;
+  try{
+    await navigator.clipboard.writeText(text);
+    alert("견적내용을 복사했습니다.");
+  }catch{
+    prompt("아래 내용을 복사해 주세요.",text);
+  }
+};
+</script>
+</body>
+</html>
